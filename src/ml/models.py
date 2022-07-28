@@ -118,10 +118,11 @@ class MLPClassifier:
         return np.argmax(y_prob, axis=0).reshape(-1,)
     
     
-    def compute_gradient(self, X, y):
+    def compute_gradient(self, X, y, logs=False):
         y_pred, cache = self.predict_probabilities(X, cache=True)
         
-        print('Loss:', Loss.cross_entropy(y, y_pred))
+        if logs:
+            print('Loss:', Loss.cross_entropy(y, y_pred))
         
         gradients = self.__backpropagation(y, y_pred, cache)
         
@@ -136,7 +137,7 @@ class MLPClassifier:
             self.parameters['b' + str(n + 1)] -= learning_rate * gradients['db' + str(n + 1)]
             
     
-    def fit(self, X, y, learning_rate=0.01, epochs=50):
+    def fit(self, X, y, learning_rate=0.01, epochs=50, logs=False):
         for _ in range(epochs):
-            gradients = self.compute_gradient(X, y)
+            gradients = self.compute_gradient(X, y, logs=logs)
             self.update_parameters(gradients, learning_rate)
