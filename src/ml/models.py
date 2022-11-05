@@ -1,5 +1,6 @@
 import numpy as np
 
+from crypto.homomorphic import Cipher
 from ml.utils import Activation, Assertion, Initialization, Loss
 
 class MLPClassifier:
@@ -141,3 +142,42 @@ class MLPClassifier:
         for _ in range(epochs):
             gradients = self.compute_gradient(X, y, logs=logs)
             self.update_parameters(gradients, learning_rate)
+            
+            
+    def copy(self):
+        model_copy = self.__class__(self.n_features, self.n_classes, self.layers_size[1:-1], self.activations[:-1])
+        
+        model_copy.parameters = self.parameters
+        
+        return model_copy
+
+
+class PrivateMLPClassifier(MLPClassifier):
+    
+    def __init__(self, n_features, n_classes, hidden_layers_size=(), activations=(), initialization='he'):
+        
+        super().__init__(
+            n_features, 
+            n_classes, 
+            hidden_layers_size=hidden_layers_size, 
+            activations=activations, 
+            initialization=initialization
+        )
+        
+    
+    def encrypted_gradient(self, X, y, public_key, sum_to=None, logs=False):
+        encrypted_gradients = {}
+        gradients = self.compute_gradient(X, y, logs=logs)
+        
+        for gradient_key, gradient_value in gradients.items():
+            gradient_value = gradient_value.reshape(gradient_value.shape[0] * gradient_value.shape[1],)
+            
+            encrypted_gradients[gradient_key + '_enc'] = Cipher.encrypt_vector(public_key, gradient_value)
+            
+            if sum_to is not None:
+                encrypted_gradients[gradient_key + '_enc'] = Cipher.sum_encrypted_vectors(
+                    sum_to[gradient_key + '_enc'], 
+                    encrypted_gradients[gradient_key + '_enc']
+                )
+        
+        return encrypted_gradients
