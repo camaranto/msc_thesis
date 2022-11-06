@@ -1,10 +1,12 @@
 import numpy as np
+import pandas as pd
 import time as time
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 from ml.models import PrivateMLPClassifier
+from ml.plots import plot_confusion_matrix
 from simulation.entities import Client, Server
 
 class Simulation:
@@ -44,7 +46,6 @@ class Simulation:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
         
         return X_train, X_test, y_train, y_test
-            
     
     
     def __initialize_clients(self, X, y, n_clients, public_key, architecture, encoding='onehot'):
@@ -92,22 +93,46 @@ class Simulation:
         print(message)
         
     
-    def run_local(self):
+    def __get_local_metrics(self):
+        self.__local_metrics_data, self.__local_conf_matrices = [], []
+        for client in self.clients:
+            metrics, conf_matrix = client.local_metrics(self.__X_test, self.__y_test)
+            self.__local_metrics_data.append(metrics)
+            self.__local_conf_matrices.append(conf_matrix)
+
+
+    def run_local(self, output=True, plot=False):
         print('Running local training for {:d} epochs...\n'.format(self.__train['epochs']))   
-        print('Metrics that each client gets on test set by training only on own local data on Test Set:\n')
-        
-        if self.__encoding == 'onehot':
-            encoder = OneHotEncoder(sparse=False).fit(
-                np.array([i for i in range(self.__architecture['n_classes'])]).reshape(-1, 1)
-            )
         
         for client in self.clients:
             client.local_fit(self.__train)
-            metrics = client.local_metrics(self.__X_test, self.__y_test, encoder)
-            print('{:s}: {:.3%}'.format(client.name, metrics))
+        
+        self.__get_local_metrics()
+
+        if output:
+            self.print_local_metrics(plot)
+
+
+    def print_local_metrics(self, plot=False):
+        df_metrics = pd.DataFrame.from_records(self.__local_metrics_data)
+
+        print('Metrics that each client gets on Test Set by training only on own local data:\n')
+        print(df_metrics.to_markdown())
+
+        if plot:
+            for conf_matrix in self.__local_conf_matrices:
+                plot_confusion_matrix(**conf_matrix)
     
+
+    def __get_federated_metrics(self):
+        self.__federated_metrics_data, self.__federated_conf_matrices = [], []
+        for client in self.clients:
+            metrics, conf_matrix = client.federated_metrics(self.__X_test, self.__y_test)
+            self.__federated_metrics_data.append(metrics)
+            self.__federated_conf_matrices.append(conf_matrix)
+
     
-    def run_federated(self, logs=True):
+    def run_federated(self, logs=True, output=True, plot=False):
         learning_rate, epochs = self.__train.values()
         
         print('\nRunning distributed gradient aggregation for {:d} epochs...\n'.format(epochs))
@@ -137,7 +162,18 @@ class Simulation:
                 print('Epoch Time: {:.2f}s'.format(end_epoch - start_epoch), end=', ')
                 print('Total Time: {:.2f}s'.format(end_epoch - start_train))
         
-        print('\nMetrics that each client gets on test set by training only on own local data on Test Set:\n')
-        for client in self.clients:
-            metrics = client.federated_metrics(self.__X_test, self.__y_test)
-            print('{:s}: {:.3%}'.format(client.name, metrics))
+        self.__get_federated_metrics()
+
+        if output:
+            self.print_federated_metrics(plot)
+
+    
+    def print_federated_metrics(self, plot=False):
+        df_metrics = pd.DataFrame.from_records(self.__federated_metrics_data)
+
+        print('\nMetrics that each client gets on Test Set by training with Federated Learning Protocol:\n')
+        print(df_metrics.to_markdown())
+
+        if plot:
+            for conf_matrix in self.__federated_conf_matrices:
+                plot_confusion_matrix(**conf_matrix)

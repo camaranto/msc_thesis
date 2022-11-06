@@ -1,6 +1,6 @@
 import phe as paillier
 
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix, log_loss, precision_score, recall_score, roc_auc_score
 
 from crypto.homomorphic import Cipher
 from ml.models import PrivateMLPClassifier
@@ -51,14 +51,25 @@ class Client:
         self.__local_model.fit(self.__X, self.__y, **train)
         
         
-    def local_metrics(self, X_test, y_test, encoder, error=True):
+    def local_metrics(self, X_test, y_test):
         y_pred = self.__local_model.predict(X_test)
+        y_prob = self.__local_model.predict_probabilities(X_test)
+
+        metrics = {
+            'name': self.name,
+            'accuracy': accuracy_score(y_test, y_pred),
+            'loss': log_loss(y_test, y_prob.T),
+            'precision': precision_score(y_test, y_pred, average='weighted', zero_division=0),
+            'recall': recall_score(y_test, y_pred, average='weighted', zero_division=0),
+            'roc-auc': roc_auc_score(y_test, y_prob.T, average='weighted', multi_class='ovr')
+        }
+
+        conf_matrix = {
+            'title': self.name + ' Local Confusion Matrix',
+            'confusion_matrix': confusion_matrix(y_test, y_pred)
+        }
         
-        accuracy = accuracy_score(y_test, y_pred)
-        
-        #cross_entropy = Loss.cross_entropy(y_pred, encoder.transform(y_test.reshape(-1, 1)).T)
-        
-        return accuracy
+        return metrics, conf_matrix
     
     
     def federated_encrypted_gradient(self, sum_to=None):
@@ -78,7 +89,20 @@ class Client:
     
     def federated_metrics(self, X_test, y_test):
         y_pred = self.__federated_model.predict(X_test)
+        y_prob = self.__federated_model.predict_probabilities(X_test)
+
+        metrics = {
+            'name': self.name,
+            'accuracy': accuracy_score(y_test, y_pred),
+            'loss': log_loss(y_test, y_prob.T),
+            'precision': precision_score(y_test, y_pred, average='weighted', zero_division=0),
+            'recall': recall_score(y_test, y_pred, average='weighted', zero_division=0),
+            'roc-auc': roc_auc_score(y_test, y_prob.T, average='weighted', multi_class='ovr')
+        }
+
+        conf_matrix = {
+            'title': self.name + ' Federated Confusion Matrix',
+            'confusion_matrix': confusion_matrix(y_test, y_pred)
+        }
         
-        accuracy = accuracy_score(y_test, y_pred)
-        
-        return accuracy
+        return metrics, conf_matrix
