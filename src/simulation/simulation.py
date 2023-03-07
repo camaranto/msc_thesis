@@ -11,7 +11,7 @@ from simulation.entities import Client, Server
 
 class Simulation:
     
-    def __init__(self, X, y, n_clients, key_length, architecture, train, test, scaling='standard', encoding='onehot'):
+    def __init__(self, X, y, n_clients, key_length, architecture, train, test, scaling='standard', encoding='onehot', distribution="equal"):
         self.__n_clients = n_clients
         self.__architecture = architecture
         self.__train = train
@@ -29,7 +29,8 @@ class Simulation:
             y_train, 
             n_clients,
             self.server.public_key, 
-            architecture, 
+            architecture,
+            distribution,
             encoding=encoding
         )
     
@@ -48,21 +49,27 @@ class Simulation:
         return X_train, X_test, y_train, y_test
     
     
-    def __initialize_clients(self, X, y, n_clients, public_key, architecture, encoding='onehot'):
+    def __initialize_clients(self, X, y, n_clients, public_key, architecture,  distribution, encoding='onehot'):
         clients = []
         
-        n_samples = X.shape[0] // n_clients
+        
+        if distribution == "equal":
+            n_samples = X.shape[0] // n_clients
+            dist_clients = zip(range(n_clients), [n_samples]*n_clients)
+        else:
+            dist_clients = zip(range(n_clients), map(lambda x: int(x * X.shape[0]), distribution))
         
         if encoding == 'onehot':
-            encoder = OneHotEncoder(sparse=False).fit(
+            encoder = OneHotEncoder(sparse_output=False).fit(
                 np.array([i for i in range(architecture['n_classes'])]).reshape(-1, 1)
             )
-        
-        for i in range(n_clients):
+        acum = 0
+        for i,n_samples in dist_clients:
             name = 'Client {:}'.format(i + 1)
-            start, end = i * n_samples, (i + 1) * n_samples
+            start, end = acum,( acum := acum + n_samples)
             
             X_client, y_client = X[start:end, :].copy(), y[start:end].copy()
+            print(name, y_client.shape)
             X_client, y_client = X_client.T, encoder.transform(y_client.reshape(-1, 1)).T
             
             clients.append(Client(name, X_client, y_client, public_key, architecture))

@@ -55,6 +55,8 @@ class Assertion:
         for activation in activations:
             if activation not in ['sigmoid', 'tanh', 'relu']:
                 raise ValueError("All activations must be in ['sigmoid', 'tanh', 'relu'].")
+    
+    
 
 
 class Initialization:
