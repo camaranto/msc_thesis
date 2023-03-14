@@ -127,7 +127,7 @@ class Client:
 
     def start_protocol(self):
 
-        HOST = 'anakim-dell'
+        HOST = 'cconrado-pc'
         PORT = 8889
         with MLSocket() as s:
             s.connect((HOST, PORT)) 
