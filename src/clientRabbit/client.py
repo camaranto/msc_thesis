@@ -8,6 +8,7 @@ import pickle as pkl
 import json
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+import time
 
 DATA_PATH = "data/data.pkl"
 ARCH =  {
@@ -127,12 +128,13 @@ class Client:
 
     def start_protocol(self):
 
-        HOST = 'cconrado-pc'
+        HOST = 'anakim-dell'
         PORT = 8889
         with MLSocket() as s:
             s.connect((HOST, PORT)) 
             msg = s.recv(1024)
             print("recv", msg.decode("UTF-8"))
+            time.sleep(1)
             s.send(bytes(self.name, encoding="UTF-8"))
             n_str = s.recv(1024)
             n = int(n_str.decode("utf-8"))

@@ -8,6 +8,7 @@ import pickle as pkl
 import json
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+import time
 
 DATA_PATH = "data/data.pkl"
 ARCH =  {
@@ -89,7 +90,7 @@ class Client:
             
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
         
-        return X_train.T, X_test.T, encoder.transform(y_train.reshape(-1, 1)).T, encoder.transform(y_test.reshape(-1, 1)).T
+        return X_train.T, X_test.T, encoder.transform(y_train.reshape(-1, 1)).T, encoder.transform(y_test.reshape(-1, 1))
     
     def federated_update_parameters(self, gradients, learning_rate=0.01):
         self.__federated_model.update_parameters(gradients, learning_rate)
@@ -127,12 +128,14 @@ class Client:
 
     def start_protocol(self):
 
-        HOST = 'cconrado-pc'
+        HOST = 'anakim-dell'
         PORT = 8889
         with MLSocket() as s:
             s.connect((HOST, PORT)) 
             msg = s.recv(1024)
             print("recv", msg.decode("UTF-8"))
+            print("sent name")
+            time.sleep(1)
             s.send(bytes(self.name, encoding="UTF-8"))
             n_str = s.recv(1024)
             n = int(n_str.decode("utf-8"))
@@ -150,4 +153,3 @@ if __name__ == "__main__":
         print(X.shape, y.shape)
     capi = Client(NAME,X,y,ARCH)
     capi.start_protocol()
-    capi.local_metrics(capi.X_test, capi.y_test)
