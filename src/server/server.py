@@ -10,6 +10,7 @@ import queue
 import concurrent.futures
 import time
 from sklearn.metrics import accuracy_score, confusion_matrix, log_loss, precision_score, recall_score, roc_auc_score
+import pickle as pkl
 
 N_CLIENTS = 2
 ARCH =  {
@@ -231,6 +232,7 @@ class Server:
                 else:
                     print(f"completed sending to {addr_}")
             # recv name
+            print("recv name")
             future_to_client = {executor.submit(recvData, client_): (client_,addr_) for (client_,addr_) in clients}
             name_to_client = {}
             for future in concurrent.futures.as_completed(future_to_client):
@@ -242,6 +244,7 @@ class Server:
                 else:
                     name_to_client[data.decode("UTF")] = (client_,addr_ )
                     print(f"completed receiving from {addr_}", data)
+            print("send n")
             # send n 
             future_to_client = {executor.submit(sendData,client_,bytes(str(self.public_key.n),"utf-8")) : name_ for name_,(client_,addr_) in name_to_client.items()}
             for future in concurrent.futures.as_completed(future_to_client):
@@ -253,10 +256,16 @@ class Server:
                 else:
                     print(f"Sent public key to {name_}...")
             # recv metrics
-            #future_to_client = {executor.submit(recvData,client_): name_ for name_,(client_, addr_) in name_to_client.items()}
-            #for future in concurrent.futures.as_completed(future_to_client):
-            #    name_ = future_to_client[future]
-
+            future_to_client = {executor.submit(recvData,client_): name_ for name_,(client_, addr_) in name_to_client.items()}
+            for future in concurrent.futures.as_completed(future_to_client):
+                name_ = future_to_client[future]
+                try:
+                    metrics = pkl.loads(future.result()) 
+                except Exception as err:
+                    print(name_, str(err))
+                else:
+                    print("=" * 5, name_ , "="*5)
+                    print(metrics)
             
 
 if __name__ == "__main__":

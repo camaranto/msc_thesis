@@ -10,7 +10,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 import time
 
-DATA_PATH = "data/data.pkl"
+DATA_PATH = "data/trainData.pkl"
+TEST_DATA_PATH = "data/testData.pkl"
 ARCH =  {
         "n_features": 64, 
         "n_classes": 10,
@@ -32,12 +33,11 @@ class Client:
     def __init__(self, name, X, y, architecture):
         self.architecture = architecture
         self.name = name
-        #self.__X = X
-        #self.__y = y
+        self.__X, self.__y = self.__preprocess_data(X, y)
         # self.public_key = public_key
         self.__local_model = PrivateMLPClassifier(**architecture)
         self.__federated_model = self.__local_model.copy()
-        self.__X, self.X_test, self.__y, self.y_test = self.__preprocess_data(X, y)
+        #self.__X, self.X_test, self.__y, self.y_test = self.__preprocess_data(X, y)
         
     
     
@@ -80,7 +80,7 @@ class Client:
         
         return encrypted_gradient
     
-    def __preprocess_data(self, X, y, test_size=0.2, scaling='standard'):
+    def __preprocess_data(self, X, y, scaling='standard'):
         if scaling == 'standard':
             scaler = StandardScaler()
             X = scaler.fit_transform(X)
@@ -88,10 +88,10 @@ class Client:
                 np.array([i for i in range(self.architecture['n_classes'])]).reshape(-1, 1)
             )
             
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+        #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
         
-        return X_train.T, X_test.T, encoder.transform(y_train.reshape(-1, 1)).T, encoder.transform(y_test.reshape(-1, 1))
-    
+        return X.T, encoder.transform(y.reshape(-1, 1)).T
+
     def federated_update_parameters(self, gradients, learning_rate=0.01):
         self.__federated_model.update_parameters(gradients, learning_rate)
         
@@ -128,12 +128,13 @@ class Client:
 
     def start_protocol(self):
 
-        HOST = 'anakim-dell'
+        HOST = '192.168.0.100'
         PORT = 8889
         with MLSocket() as s:
             s.connect((HOST, PORT)) 
             msg = s.recv(1024)
             print("recv", msg.decode("UTF-8"))
+            print("sent name")
             time.sleep(1)
             s.send(bytes(self.name, encoding="UTF-8"))
             n_str = s.recv(1024)
@@ -144,10 +145,15 @@ class Client:
             print("starting local training...")
             self.local_fit(TRAIN)
             print("ended local training")
+            with open(TEST_DATA_PATH, "rb") as f:
+                X_test,y_test = pkl.load(f)
+                X_test = X_test.T
+            metrics,_ = self.local_metrics(X_test, y_test)
+            print("sent local metrics...")
+            s.send(pkl.dumps(metrics))
 
 
 if __name__ == "__main__":
-    
     with open(DATA_PATH, "rb") as f:
         X,y = pkl.load(f)
         print(X.shape, y.shape)

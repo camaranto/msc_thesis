@@ -1,0 +1,29 @@
+version: '3'
+services:
+  server:
+    build: server
+    networks:
+      intra_net:
+        ipv4_address: 192.168.0.100
+  rabbit:
+    build: clientRabbit
+    command: ["python", "client.py"]
+    networks:
+      intra_net:
+        ipv4_address: 192.168.0.2
+    depends_on:
+      - server
+  capibara:
+    build: clientCapibara
+    command: ["python", "client.py"]
+    networks:
+      intra_net:
+        ipv4_address: 192.168.0.4
+    depends_on:
+      - server
+networks:
+  intra_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "192.168.0.0/16"
