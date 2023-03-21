@@ -11,6 +11,10 @@ import concurrent.futures
 import time
 from sklearn.metrics import accuracy_score, confusion_matrix, log_loss, precision_score, recall_score, roc_auc_score
 import pickle as pkl
+from dotenv import load_dotenv
+import os
+from crypto.homomorphic import Cipher
+import json
 
 N_CLIENTS = 2
 ARCH =  {
@@ -22,6 +26,8 @@ ARCH =  {
     }
 KEY_LENGTH = 1024
 PORT = 8889
+load_dotenv()
+EPOCHS = int(os.environ.get("EPOCHS")) 
 class Server:
 
     def __init__(self, name, key_length, n_clients, architecture) -> None:
@@ -192,7 +198,7 @@ class Server:
     
     def run_protocol_threaded(self):
 
-        host = socket.gethostname()
+        host = "0.0.0.0"
 
         # bind the socket to a public host, and a well-known port
         self.server_socket.bind((host, 8889))
@@ -211,6 +217,9 @@ class Server:
         def recvData(client_socket):
             data = client_socket.recv(1024)
             return data
+
+        def execute_parallel(future: list) -> object:
+            pass
         clients = []
         while len(clients) < N_CLIENTS:
             try:
@@ -265,7 +274,50 @@ class Server:
                     print(name_, str(err))
                 else:
                     print("=" * 5, name_ , "="*5)
-                    print(metrics)
+                    print(json.dumps(metrics, indent=4))
+
+            for epoch in range(1,EPOCHS+1):
+                print(f"epoch : {epoch}")
+                future_to_client = {executor.submit(recvData,client_): name_ for name_,(client_,addr_) in name_to_client.items()}
+                encrypted_gradients = list()
+                for future in concurrent.futures.as_completed(future_to_client):
+                    name_ = future_to_client[future]
+                    try:
+                        encrypted_gradients.append(pkl.loads(future.result()))
+                    except Exception as err:
+                        print("ERROR:", name_, str(err))
+                    else:
+                        print(f"gradient received from {name_}...")
+                        #print(encrypted_gradients)
+
+                encrypted_gradients_aggr = {}
+                for gradient_key in encrypted_gradients[0].keys(): 
+                    encrypted_gradients_aggr[gradient_key] = Cipher.sum_encrypted_vectors(*[gradient[gradient_key] for gradient in encrypted_gradients])
+                #print(encrypted_gradients_aggr)
+                gradients = self.decrypt_aggregate(encrypted_gradients_aggr)
+
+                future_to_client = {executor.submit(sendData,client_,pkl.dumps(gradients)): name_ for name_, (client_, addr_) in name_to_client.items()}
+                for future in concurrent.futures.as_completed(future_to_client):
+                    name_ = future_to_client[future]
+                    try:
+                        future.result()
+                    except Exception as e:
+                        print("ERROR:", name_, str(e))
+                    else:
+                        print(f"sent gradients to client: {name_}")
+            future_to_client = {executor.submit(recvData, client_):name_ for name_, (client_, addr_) in name_to_client.items()}
+            for future in concurrent.futures.as_completed(future_to_client):
+                name_ = future_to_client[future]
+                try:
+                    federated_metrics = pkl.loads(future.result())
+                except Exception as e:
+                    print("ERROR:", name_, str(e))
+                else:
+                    print("=" * 5, name_ , "="*5)
+                    print(federated_metrics[1].get("confusion_matrix"))
+                    print(json.dumps(federated_metrics[0], indent=4))
+        print("closing socket connection...")
+        self.server_socket.close()
             
 
 if __name__ == "__main__":

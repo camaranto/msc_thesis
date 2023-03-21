@@ -11,7 +11,16 @@ class Cipher:
         return np.array([private_key.decrypt(i) for i in x])
     
     @staticmethod
-    def sum_encrypted_vectors(x, y):
-        if len(x) != len(y):
+    def sum_encrypted_vectors(*x):
+        if len(x) < 2:
+            raise ValueError('Must provide at least two vectors')
+        x_size = len(x[0])
+        if not all([ len(x_) == x_size for x_ in x]):
             raise ValueError('Encrypted vectors must have the same size')
-        return [x[i] + y[i] for i in range(len(x))]
+        acum_encrypted_vector = list()
+        for i in range(x_size):    
+            acum = 0
+            for x_ in x:
+                acum += x_[i]
+            acum_encrypted_vector.append(acum)
+        return acum_encrypted_vector
