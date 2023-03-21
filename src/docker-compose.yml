@@ -1,26 +1,27 @@
 version: '3'
 services:
-  server:
-    build: server
-    networks:
-      intra_net:
-        ipv4_address: 192.168.0.100
   rabbit:
     build: clientRabbit
+    environment:
+      SERVER_HOSTNAME : "${SERVER_HOSTNAME}"
+      PORT : "${PORT}"
+      LEARNING_RATE: "${LEARNING_RATE}"
+      EPOCHS: "${EPOCHS}"
     command: ["python", "client.py"]
     networks:
       intra_net:
         ipv4_address: 192.168.0.2
-    depends_on:
-      - server
   capibara:
     build: clientCapibara
+    environment:
+      SERVER_HOSTNAME : "${SERVER_HOSTNAME}"
+      PORT : "${PORT}"
+      LEARNING_RATE: "${LEARNING_RATE}"
+      EPOCHS: "${EPOCHS}"
     command: ["python", "client.py"]
     networks:
       intra_net:
         ipv4_address: 192.168.0.4
-    depends_on:
-      - server
 networks:
   intra_net:
     ipam:

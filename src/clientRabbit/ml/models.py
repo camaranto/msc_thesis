@@ -166,7 +166,7 @@ class PrivateMLPClassifier(MLPClassifier):
         )
         
     
-    def encrypted_gradient(self, X, y, public_key, sum_to=None, logs=False):
+    def encrypted_gradient(self, X, y, public_key, logs=False):
         encrypted_gradients = {}
         gradients = self.compute_gradient(X, y, logs=logs)
         
@@ -175,10 +175,10 @@ class PrivateMLPClassifier(MLPClassifier):
             
             encrypted_gradients[gradient_key + '_enc'] = Cipher.encrypt_vector(public_key, gradient_value)
             
-            if sum_to is not None:
-                encrypted_gradients[gradient_key + '_enc'] = Cipher.sum_encrypted_vectors(
-                    sum_to[gradient_key + '_enc'], 
-                    encrypted_gradients[gradient_key + '_enc']
-                )
+            #if sum_to is not None:
+            #    encrypted_gradients[gradient_key + '_enc'] = Cipher.sum_encrypted_vectors(
+            #        sum_to[gradient_key + '_enc'], 
+            #        encrypted_gradients[gradient_key + '_enc']
+            #    )
         
         return encrypted_gradients

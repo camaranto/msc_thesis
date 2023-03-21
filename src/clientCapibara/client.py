@@ -9,6 +9,7 @@ import json
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 import time
+import os
 
 DATA_PATH = "data/trainData.pkl"
 TEST_DATA_PATH = "data/testData.pkl"
@@ -20,12 +21,12 @@ ARCH =  {
         "initialization": "zeros"
     }
 TRAIN = {
-        'learning_rate': 0.01,
-        'epochs': 10,
+        'learning_rate': float(os.environ.get("LEARNING_RATE")),
+        'epochs': int(os.environ.get("EPOCHS")),
         'logs' : True
     }
 KEY_LENGTH = 1024
-PORT = 8889
+PORT = int(os.environ.get("PORT"))
 NAME = "Capibara"
 class Client:
     
@@ -70,12 +71,11 @@ class Client:
         return metrics, conf_matrix
     
     
-    def federated_encrypted_gradient(self, sum_to=None):
+    def federated_encrypted_gradient(self, public_key):
         encrypted_gradient = self.__federated_model.encrypted_gradient(
             self.__X, 
             self.__y, 
-            self.public_key, 
-            sum_to=sum_to
+            public_key
         )
         
         return encrypted_gradient
@@ -128,7 +128,8 @@ class Client:
 
     def start_protocol(self):
 
-        HOST = '192.168.0.100'
+        HOST = os.environ.get("SERVER_HOSTNAME")
+        print(HOST)
         PORT = 8889
         with MLSocket() as s:
             time.sleep(2)
@@ -152,7 +153,19 @@ class Client:
             metrics,_ = self.local_metrics(X_test, y_test)
             print("sent local metrics...")
             s.send(pkl.dumps(metrics))
-            
+            for epoch in range(1,TRAIN.get("epochs")+1):
+                print(f"Epoch: {epoch}")
+                encrypted_gradient = self.federated_encrypted_gradient(publicKey)
+                #print(encrypted_gradient)
+                s.send(pkl.dumps(encrypted_gradient))
+                print(f"sent encrypted gradient to server")
+                gradients = pkl.loads(s.recv(1024))
+                print("receive gradients from server")
+                self.federated_update_parameters(gradients)
+                print("updated parameters...")
+            federated_metrics = self.federated_metrics(X_test, y_test)
+            s.send(pkl.dumps(federated_metrics))
+            print("sent federated metrics")
 
 
 if __name__ == "__main__":
