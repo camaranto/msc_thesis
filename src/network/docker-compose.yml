@@ -1,0 +1,69 @@
+version: '3'
+services:
+  rabbit:
+    build: client_rabbit
+    environment:
+      SERVER_HOSTNAME : "${SERVER_HOSTNAME}"
+      PORT : "${PORT}"
+      LEARNING_RATE: "${LEARNING_RATE}"
+      EPOCHS: "${EPOCHS}"
+      CLIENT_NAME : "Rabbit"
+    command: ["python", "client.py"]
+    networks:
+      inter_net:
+        ipv4_address: 172.10.0.2
+  capibara:
+    build: client_capibara
+    environment:
+      SERVER_HOSTNAME : "${SERVER_HOSTNAME}"
+      PORT : "${PORT}"
+      LEARNING_RATE: "${LEARNING_RATE}"
+      EPOCHS: "${EPOCHS}"
+      CLIENT_NAME : "Capibara"
+    command: ["python", "client.py"]
+    networks:
+      inter_net:
+        ipv4_address: 172.10.0.4
+  horse:
+    build: client_horse
+    environment:
+      SERVER_HOSTNAME : "${SERVER_HOSTNAME}"
+      PORT : "${PORT}"
+      LEARNING_RATE: "${LEARNING_RATE}"
+      EPOCHS: "${EPOCHS}"
+      CLIENT_NAME : "Horse"
+    command: ["python", "client.py"]
+    networks:
+      inter_net:
+        ipv4_address: 172.10.0.6
+  dog:
+    build: client_dog
+    environment:
+      SERVER_HOSTNAME : "${SERVER_HOSTNAME}"
+      PORT : "${PORT}"
+      LEARNING_RATE: "${LEARNING_RATE}"
+      EPOCHS: "${EPOCHS}"
+      CLIENT_NAME : "Dog"
+    command: ["python", "client.py"]
+    networks:
+      inter_net:
+        ipv4_address: 172.10.0.8
+  cat:
+    build: client_cat
+    environment:
+      SERVER_HOSTNAME : "${SERVER_HOSTNAME}"
+      PORT : "${PORT}"
+      LEARNING_RATE: "${LEARNING_RATE}"
+      EPOCHS: "${EPOCHS}"
+      CLIENT_NAME : "Cat"
+    command: ["python", "client.py"]
+    networks:
+      inter_net:
+        ipv4_address: 172.10.0.10
+
+networks:
+  inter_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.10.0.0/18"
